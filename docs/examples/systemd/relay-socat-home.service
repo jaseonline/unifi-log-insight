@@ -1,0 +1,24 @@
+# Home-LAN side: turn incoming UniFi syslog UDP into a local TCP stream that
+# the SSH tunnel (relay-tunnel.service) carries to the cloud VM.
+# Install on the home-LAN host (Pi, NAS, etc.) that sits between the UniFi
+# gateway and the internet. See docs/wiki/CGNAT-Relay-Setup.md.
+#
+# Install: sudo cp relay-socat-home.service /etc/systemd/system/
+#          sudo systemctl daemon-reload
+#          sudo systemctl enable --now relay-socat-home.service
+
+[Unit]
+Description=UniFi syslog UDP->TCP relay (home LAN side)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/socat UDP4-LISTEN:514,fork,reuseaddr,bind=127.0.0.1 TCP4:127.0.0.1:5514
+Restart=always
+RestartSec=5
+User=root
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,34 @@
+# Home-LAN side: the persistent outbound SSH tunnel that carries the
+# syslog relay (and optionally other forwards) to the cloud VM. Survives
+# CGNAT because the home side is always the one dialing out.
+# See docs/wiki/CGNAT-Relay-Setup.md.
+#
+# Requires: autossh installed; a dedicated, restricted SSH key (NOT your
+# general admin key) with the matching authorized_keys entry on the VM:
+#   command="/bin/false",permitopen="127.0.0.1:5514",no-agent-forwarding,no-X11-forwarding,no-pty ssh-ed25519 AAAA... pi-relay-key
+#
+# Install: sudo cp relay-tunnel.service /etc/systemd/system/
+#          sudo systemctl daemon-reload
+#          sudo systemctl enable --now relay-tunnel.service
+
+[Unit]
+Description=Persistent SSH relay tunnel to cloud VM
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=AUTOSSH_GATETIME=0
+ExecStart=/usr/bin/autossh -M 0 -N \
+  -o "ServerAliveInterval=15" \
+  -o "ServerAliveCountMax=3" \
+  -o "ExitOnForwardFailure=yes" \
+  -i /home/<home-user>/.ssh/relay_to_vm \
+  -L 5514:127.0.0.1:5514 \
+  <vm-user>@<vm-public-ip>
+Restart=always
+RestartSec=10
+User=<home-user>
+
+[Install]
+WantedBy=multi-user.target

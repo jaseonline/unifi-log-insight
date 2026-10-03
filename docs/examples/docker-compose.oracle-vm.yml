@@ -1,0 +1,52 @@
+# Reference docker-compose.yml for the "cloud VM behind Cloudflare Tunnel"
+# deployment documented in docs/wiki/Oracle-Cloud-Deployment.md.
+#
+# Differences from the repo's top-level docker-compose.yml template:
+#   - Secrets come from .env via env_file, not inline `environment:` values.
+#     Never commit a filled-in .env — it's already in .gitignore.
+#   - Both ports are bound to 127.0.0.1 only. This container is never meant
+#     to be reachable directly from the internet; Cloudflare Tunnel (running
+#     as its own systemd service on the host, not in this compose file)
+#     is the only path in, and syslog arrives via the SSH/socat relay
+#     (see docs/wiki/CGNAT-Relay-Setup.md), also bound to localhost.
+#   - AUTH_ENABLED=true, since this instance is reachable from the internet
+#     (via the tunnel) rather than only from a trusted LAN.
+#
+# Copy this to docker-compose.yml on the VM, create a real .env next to it
+# (see .env.example at the repo root for the full variable list), and
+# `docker compose up -d`.
+
+services:
+  unifi-log-insight:
+    image: ghcr.io/jmasarweh/unifi-log-insight:latest
+    pull_policy: always
+    container_name: unifi-log-insight
+    restart: unless-stopped
+    shm_size: '256mb'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    ports:
+      - "127.0.0.1:514:514/udp"   # fed by the relay's VM-side socat, not the internet
+      - "127.0.0.1:8090:8000"     # fed by cloudflared's ingress, not the internet
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./maxmind:/app/maxmind
+    env_file:
+      - .env
+    environment:
+      AUTH_ENABLED: "true"
+      TZ: "<your-timezone>"            # must match your UniFi gateway's local time
+      RETENTION_DAYS: "7"               # tune to your VM's disk budget
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+
+volumes:
+  pgdata:
+    name: unifi-log-insight-pgdata

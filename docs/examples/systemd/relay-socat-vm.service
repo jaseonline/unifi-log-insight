@@ -1,0 +1,22 @@
+# Cloud VM side: turn the incoming TCP stream (from the SSH tunnel) back
+# into UDP, feeding the Insights Plus container's syslog listener.
+# See docs/wiki/CGNAT-Relay-Setup.md.
+#
+# Install: sudo cp relay-socat-vm.service /etc/systemd/system/
+#          sudo systemctl daemon-reload
+#          sudo systemctl enable --now relay-socat-vm.service
+
+[Unit]
+Description=UniFi syslog TCP->UDP relay (cloud VM side)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/socat TCP4-LISTEN:5514,fork,reuseaddr,bind=127.0.0.1 UDP4-SENDTO:127.0.0.1:514
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target

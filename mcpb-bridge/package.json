@@ -1,0 +1,1 @@
+{"name": "insights-plus-mcp-bridge", "version": "1.0.0", "type": "module", "main": "server/index.js", "license": "MIT", "private": true, "scripts": {"start": "node server/index.js", "smoke-test": "node server/smoke-test.js"}, "dependencies": {"@modelcontextprotocol/sdk": "^1.32.0"}}

@@ -1,0 +1,4 @@
+server/smoke-test.js
+*.md
+.git
+.gitignore

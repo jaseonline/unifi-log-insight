@@ -1,0 +1,105 @@
+{
+  "manifest_version": "0.3",
+  "name": "insights-plus-mcp-bridge",
+  "display_name": "UniFi Insights Plus (Remote Bridge)",
+  "version": "1.0.0",
+  "description": "Connects Claude to a self-hosted UniFi Insights Plus syslog server's MCP endpoint over HTTPS, including Cloudflare Access service-token auth.",
+  "long_description": "This bundle is a local MCP server that bridges to a remote, self-hosted UniFi Insights Plus instance's `/api/mcp` endpoint. It handles the HTTP/SSE transport, the app's own bearer-token auth, and optional Cloudflare Access service-token headers (`CF-Access-Client-Id` / `CF-Access-Client-Secret`) for instances gated behind a Cloudflare Access application.\n\nAll credentials are collected through this bundle's configuration UI and stored by the host application (e.g. in the OS keychain), never written into a plaintext config file.\n\nThe upstream connection is established lazily, on the first actual tool call rather than at startup — this keeps the initial MCP handshake with the host fast and reliable even if the remote endpoint or its network path is briefly slow, and self-heals by reconnecting automatically if the upstream connection drops mid-session.\n\nRequires a running UniFi Insights Plus instance (https://github.com/jmasarweh/UniFi-Insights-Plus) reachable over HTTPS, with its MCP feature enabled and an API bearer token generated from Settings → MCP in the app.",
+  "author": {
+    "name": "Jason Titter"
+  },
+  "homepage": "https://github.com/jmasarweh/UniFi-Insights-Plus",
+  "documentation": "https://github.com/jmasarweh/UniFi-Insights-Plus/wiki",
+  "support": "https://github.com/jmasarweh/UniFi-Insights-Plus/issues",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "IPMB_MCP_URL": "${user_config.mcp_url}",
+        "IPMB_BEARER_TOKEN": "${user_config.bearer_token}",
+        "IPMB_CF_ACCESS_CLIENT_ID": "${user_config.cf_access_client_id}",
+        "IPMB_CF_ACCESS_CLIENT_SECRET": "${user_config.cf_access_client_secret}",
+        "IPMB_REQUEST_TIMEOUT_SECONDS": "${user_config.request_timeout_seconds}",
+        "IPMB_VERBOSE_LOGGING": "${user_config.verbose_logging}"
+      }
+    }
+  },
+  "tools": [
+    { "name": "get_health", "description": "API health and version info for the remote instance" },
+    { "name": "get_unifi_status", "description": "UniFi polling and feature status" },
+    { "name": "search_logs", "description": "Search firewall/traffic logs with filters" },
+    { "name": "get_log", "description": "Get a single log entry by ID" },
+    { "name": "get_log_stats", "description": "Aggregate log statistics" },
+    { "name": "aggregate_logs", "description": "Aggregate logs by a chosen dimension" },
+    { "name": "export_logs_csv_url", "description": "Get a signed URL to export filtered logs as CSV" },
+    { "name": "list_unifi_devices", "description": "List UniFi devices known to the instance" },
+    { "name": "list_unifi_clients", "description": "List UniFi clients known to the instance" },
+    { "name": "list_firewall_policies", "description": "List zone-based firewall policies" },
+    { "name": "set_firewall_syslog", "description": "Toggle syslog logging on a firewall policy" },
+    { "name": "list_interfaces", "description": "List known network interfaces" },
+    { "name": "list_services", "description": "List known services seen in logs" },
+    { "name": "list_protocols", "description": "List known protocols seen in logs" },
+    { "name": "list_threat_ips", "description": "List IPs flagged as threats" },
+    { "name": "get_top_threat_ips", "description": "Get the top threat IPs by score or count" }
+  ],
+  "tools_generated": true,
+  "keywords": ["unifi", "networking", "syslog", "security", "self-hosted", "cloudflare"],
+  "license": "MIT",
+  "privacy_policies": [],
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "user_config": {
+    "mcp_url": {
+      "type": "string",
+      "title": "MCP Endpoint URL",
+      "description": "Full URL to your Insights Plus MCP endpoint, e.g. https://insights.example.com/api/mcp",
+      "required": true
+    },
+    "bearer_token": {
+      "type": "string",
+      "title": "MCP Bearer Token",
+      "description": "The app's own MCP token, generated from Settings → MCP inside Insights Plus. Sent as 'Authorization: Bearer <token>'.",
+      "sensitive": true,
+      "required": true
+    },
+    "cf_access_client_id": {
+      "type": "string",
+      "title": "Cloudflare Access Client ID (optional)",
+      "description": "Only needed if the MCP endpoint sits behind a Cloudflare Access application using a Service Token policy. Looks like '<id>.access'.",
+      "sensitive": true,
+      "required": false
+    },
+    "cf_access_client_secret": {
+      "type": "string",
+      "title": "Cloudflare Access Client Secret (optional)",
+      "description": "Paired with the Client ID above. Both must be set together, or neither.",
+      "sensitive": true,
+      "required": false
+    },
+    "request_timeout_seconds": {
+      "type": "number",
+      "title": "Request Timeout (seconds)",
+      "description": "Maximum time to wait for the remote server to respond to a single request before failing it.",
+      "default": 30,
+      "min": 5,
+      "max": 120,
+      "required": false
+    },
+    "verbose_logging": {
+      "type": "boolean",
+      "title": "Verbose Logging",
+      "description": "Log detailed connection and request diagnostics to stderr (never logs credential values).",
+      "default": false,
+      "required": false
+    }
+  }
+}
